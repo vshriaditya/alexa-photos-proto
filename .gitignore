@@ -44,3 +44,6 @@ next-env.d.ts
 
 public/user-uploads/
 images/
+...
+public/user-uploads/
+images/
