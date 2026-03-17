@@ -114,7 +114,7 @@ const tokenizeFileName = (name: string) =>
     .filter((token) => token && !token.includes("unsplash"));
 
 export const analyzeImage = async (file: File) => {
-  const client = getGeminiClient();
+  const client = getOpenAIClient();
   const title = toTitle(file.name);
   const fileTokens = tokenizeFileName(file.name);
 
@@ -134,29 +134,36 @@ export const analyzeImage = async (file: File) => {
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
-  const prompt = `Analyze this personal photo for a memory-recall app. Return JSON only with keys: title, caption, story, labels, people, location, emotion, color, searchableText. Keep labels short. If uncertain about people or location, return empty array or "Unknown".`;
+  const mimeType = file.type || "image/jpeg";
+  const dataUrl = `data:${mimeType};base64,${bytes.toString("base64")}`;
+  const prompt = [
+    "Analyze this personal photo for a memory-recall app.",
+    "Return JSON only with keys: title, caption, story, labels, people, location, emotion, color, searchableText.",
+    "Keep labels short and useful for natural-language search.",
+    'If uncertain about people or location, return an empty array or "Unknown".',
+  ].join(" ");
 
-  const response = await client.models.generateContent({
-    model: "gemini-2.0-flash",
-    contents: [
+  const response = await client.responses.create({
+    model: "gpt-4.1-mini",
+    input: [
       {
         role: "user",
-        parts: [
+        content: [
           {
+            type: "input_text",
             text: prompt,
           },
           {
-            inlineData: {
-              mimeType: file.type || "image/jpeg",
-              data: bytes.toString("base64"),
-            },
+            type: "input_image",
+            image_url: dataUrl,
+            detail: "low",
           },
         ],
       },
     ],
   });
 
-  const raw = response.text ?? "";
+  const raw = response.output_text ?? "";
 
   try {
     const parsed = JSON.parse(raw) as {

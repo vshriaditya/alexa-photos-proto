@@ -10,6 +10,7 @@ Public review demo for conversational photo recall on Alexa+.
 - `POST /api/events` for lightweight reviewer feedback logging
 - Browser voice input via the Web Speech API
 - Real image upload and indexing for batches of up to 25 photos
+- OpenAI-powered image understanding for uploaded photos
 - Supabase-ready repository layer with local seeded fallback for development
 - A small set of real public-source demo photos mixed into the seeded library
 - Golden-query tests and a smoke script to catch recall regressions early
@@ -17,7 +18,7 @@ Public review demo for conversational photo recall on Alexa+.
 ## Local development
 
 1. Copy `.env.example` to `.env.local`
-2. Add provider keys only if you want live OpenAI, Gemini, or Supabase integrations
+2. Add provider keys only if you want live OpenAI or Supabase integrations
 3. Install dependencies with `npm install`
 4. Start the app with `npm run dev`
 
@@ -38,7 +39,7 @@ If `ENABLE_PUBLIC_UPLOADS=true`, local uploads are stored in a local runtime sto
 - Apply the SQL in [`supabase/schema.sql`](/Users/aditya/CodexProjects/Photos/Chatbot_LLM/supabase/schema.sql)
 - Create a public storage bucket named `user-uploads`
 - Run `npm run seed:supabase` if you want the seeded library stored in Supabase instead of local fallback mode
-- Keep `ENABLE_PUBLIC_UPLOADS=false` for public review mode
+- Keep `ENABLE_PUBLIC_UPLOADS=false` only if you want review-only seeded mode
 - Share the generated Vercel URL with the reviewer
 
 ## Manual review flow
