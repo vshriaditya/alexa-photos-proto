@@ -76,7 +76,8 @@ export const getIntent = async (
     const raw = response.output_text;
 
     try {
-      return JSON.parse(raw) as ParsedIntent;
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      return normalizeIntentPayload(parsed, query);
     } catch {
       return parseIntent(query, conversation, photos, selectedOption);
     }
@@ -134,6 +135,74 @@ const buildFallbackLabels = (tokens: string[]) => {
   return cleaned.slice(0, 4);
 };
 
+const normalizeConfidence = (value: unknown): ParsedIntent["confidence"] => {
+  if (value === "high" || value === "medium" || value === "low") {
+    return value;
+  }
+
+  return "medium";
+};
+
+const normalizeSearchMode = (value: unknown): ParsedIntent["searchMode"] => {
+  if (value === "semantic" || value === "filter_only" || value === "hybrid") {
+    return value;
+  }
+
+  if (value === "filter only") {
+    return "filter_only";
+  }
+
+  return "semantic";
+};
+
+const normalizeIntentPayload = (
+  parsed: Record<string, unknown>,
+  query: string,
+): ParsedIntent => {
+  const filtersCandidate =
+    parsed.filters && typeof parsed.filters === "object" && !Array.isArray(parsed.filters)
+      ? (parsed.filters as Record<string, unknown>)
+      : {};
+
+  return {
+    naturalAnswer:
+      (typeof parsed.naturalAnswer === "string" && parsed.naturalAnswer) ||
+      (typeof parsed.natural_answer === "string" && parsed.natural_answer) ||
+      "I pulled the closest matches from the library.",
+    filters: {
+      labels: Array.isArray(filtersCandidate.labels)
+        ? filtersCandidate.labels.filter(
+            (value): value is string => typeof value === "string",
+          )
+        : [],
+      people: Array.isArray(filtersCandidate.people)
+        ? filtersCandidate.people.filter(
+            (value): value is string => typeof value === "string",
+          )
+        : [],
+      year:
+        typeof filtersCandidate.year === "number" ? filtersCandidate.year : null,
+      month:
+        typeof filtersCandidate.month === "number" ? filtersCandidate.month : null,
+      location:
+        typeof filtersCandidate.location === "string"
+          ? filtersCandidate.location
+          : null,
+    },
+    searchMode: normalizeSearchMode(parsed.searchMode ?? parsed.search_mode),
+    confidence: normalizeConfidence(parsed.confidence),
+    disambiguation: Array.isArray(parsed.disambiguation)
+      ? parsed.disambiguation.filter(
+          (value): value is string => typeof value === "string",
+        )
+      : null,
+    queryText:
+      (typeof parsed.queryText === "string" && parsed.queryText) ||
+      (typeof parsed.query_text === "string" && parsed.query_text) ||
+      query,
+  };
+};
+
 export const analyzeImage = async (file: File) => {
   const client = getOpenAIClient();
   const title = toTitle(file.name);
@@ -162,6 +231,7 @@ export const analyzeImage = async (file: File) => {
     "Analyze this personal photo for a memory-recall app.",
     "Return JSON only with keys: title, caption, story, labels, people, location, emotion, color, searchableText.",
     "Keep labels short and useful for natural-language search.",
+    "Prefer concrete visual labels like baby, infant, child, mountain, beach, dog, cat, sunset, lake, forest, soccer, food, family, portrait when they apply.",
     'If uncertain about people or location, return an empty array or "Unknown".',
   ].join(" ");
 
