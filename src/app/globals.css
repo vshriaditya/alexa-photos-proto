@@ -1,25 +1,32 @@
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #f4efe6;
+  --panel: rgba(255, 251, 245, 0.82);
+  --panel-strong: #fff9f0;
+  --foreground: #1d2d2f;
+  --muted: #596e73;
+  --line: rgba(32, 64, 81, 0.14);
+  --accent: #2b6f77;
+  --accent-strong: #184e77;
+  --warm: #d98f5c;
+  --shadow: 0 22px 80px rgba(31, 45, 61, 0.12);
+  --font-body: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-display: "Trebuchet MS", "Gill Sans", sans-serif;
 }
 
 html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
+  min-height: 100%;
 }
 
 body {
   color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(217, 143, 92, 0.28), transparent 22%),
+    radial-gradient(circle at top right, rgba(43, 111, 119, 0.24), transparent 28%),
+    linear-gradient(180deg, #f8f2e8 0%, #efe6d8 100%);
+  font-family: var(--font-body), sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -35,8 +42,377 @@ a {
   text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
+.shell {
+  width: min(1380px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 32px 0 48px;
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+
+.hero h1,
+.panelHeader h2,
+.photoTitleRow h3,
+.promptList h3 {
+  font-family: var(--font-display), sans-serif;
+}
+
+.hero h1 {
+  font-size: clamp(2.5rem, 7vw, 4.5rem);
+  line-height: 0.95;
+  max-width: 10ch;
+}
+
+.lede {
+  max-width: 66ch;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.heroBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 249, 240, 0.9);
+  border: 1px solid rgba(32, 64, 81, 0.08);
+  border-radius: 999px;
+  padding: 12px 18px;
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+}
+
+.statusDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #3a7d44;
+  box-shadow: 0 0 0 6px rgba(58, 125, 68, 0.14);
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: 300px minmax(320px, 1.1fr) minmax(360px, 1.2fr);
+  gap: 18px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(22px);
+  border-radius: 28px;
+  padding: 22px;
+  box-shadow: var(--shadow);
+  min-height: 70vh;
+}
+
+.panelHeader,
+.photoTitleRow,
+.composerActions,
+.feedbackRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panelHeader {
+  margin-bottom: 14px;
+}
+
+.panelHeader span,
+.panelCopy,
+.messageRole,
+.photoMeta p,
+.errorText {
+  color: var(--muted);
+}
+
+.libraryPanel,
+.chatPanel,
+.resultsPanel {
+  display: flex;
+  flex-direction: column;
+}
+
+.chipWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.chip,
+.chipButton {
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  border: 1px solid rgba(24, 78, 119, 0.14);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.chip.accent {
+  background: rgba(217, 143, 92, 0.18);
+}
+
+.chip.subtle {
+  padding: 8px 12px;
+  background: rgba(244, 239, 230, 0.92);
+}
+
+.chipButton {
+  cursor: pointer;
+}
+
+.promptList {
+  margin-top: 24px;
+}
+
+.uploadCard,
+.progressCard {
+  margin-top: 22px;
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(24, 78, 119, 0.1);
+}
+
+.uploadCard h3 {
+  font-family: var(--font-display), sans-serif;
+  margin-bottom: 6px;
+}
+
+.uploadCard p,
+.progressCard p {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.uploadButton {
+  display: inline-flex;
+  margin-top: 12px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--warm), #c46f3a);
+  color: white;
+  padding: 12px 16px;
+  cursor: pointer;
+}
+
+.progressBar {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(32, 64, 81, 0.08);
+  overflow: hidden;
+  margin: 10px 0;
+}
+
+.progressBar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+}
+
+.promptList h3 {
+  margin-bottom: 12px;
+}
+
+.promptButton,
+.feedbackButton,
+.submitButton,
+.micButton {
+  border: none;
+  border-radius: 18px;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.promptButton {
+  width: 100%;
+  text-align: left;
+  margin-top: 10px;
+  background: var(--panel-strong);
+  padding: 14px 16px;
+  color: var(--foreground);
+}
+
+.promptButton:hover,
+.feedbackButton:hover,
+.submitButton:hover,
+.micButton:hover,
+.chipButton:hover {
+  transform: translateY(-1px);
+}
+
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.message {
+  border-radius: 24px;
+  padding: 16px;
+  max-width: 92%;
+}
+
+.message.assistant {
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.message.user {
+  align-self: flex-end;
+  background: rgba(43, 111, 119, 0.14);
+}
+
+.messageRole {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.composer {
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+  margin-top: 16px;
+}
+
+.composer textarea {
+  width: 100%;
+  resize: none;
+  border-radius: 22px;
+  border: 1px solid rgba(32, 64, 81, 0.12);
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--foreground);
+  font: inherit;
+}
+
+.composerActions {
+  margin-top: 12px;
+}
+
+.submitButton {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: white;
+  padding: 12px 18px;
+}
+
+.micButton {
+  background: rgba(255, 255, 255, 0.92);
+  padding: 12px 18px;
+}
+
+.micButton.active {
+  background: rgba(217, 143, 92, 0.22);
+}
+
+.feedbackRow {
+  margin-top: 14px;
+  margin-bottom: 18px;
+}
+
+.feedbackButton {
+  flex: 1;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.photoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.photoCard {
+  overflow: hidden;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(32, 64, 81, 0.08);
+}
+
+.photoImage {
+  display: block;
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  background: #d7d7d7;
+}
+
+.photoMeta {
+  padding: 14px;
+}
+
+.photoMeta p {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+.errorText {
+  margin-top: 12px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 1120px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    min-height: auto;
+  }
+
+  .hero {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 640px) {
+  .shell {
+    width: min(100vw - 20px, 100%);
+    padding: 20px 0 28px;
+  }
+
+  .panel {
+    padding: 18px;
+    border-radius: 24px;
+  }
+
+  .photoGrid {
+    grid-template-columns: 1fr;
   }
 }

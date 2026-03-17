@@ -1,0 +1,203 @@
+import { GoogleGenAI } from "@google/genai";
+import OpenAI from "openai";
+
+import { env } from "@/lib/env";
+import { parseIntent } from "@/lib/search";
+import type {
+  ConversationTurn,
+  LibrarySummary,
+  ParsedIntent,
+  PhotoRecord,
+} from "@/lib/types";
+
+let openaiClient: OpenAI | null = null;
+let geminiClient: GoogleGenAI | null = null;
+
+const getOpenAIClient = () => {
+  if (!env.openAiApiKey) {
+    return null;
+  }
+
+  openaiClient ??= new OpenAI({ apiKey: env.openAiApiKey });
+  return openaiClient;
+};
+
+const getGeminiClient = () => {
+  if (!env.geminiApiKey) {
+    return null;
+  }
+
+  geminiClient ??= new GoogleGenAI({ apiKey: env.geminiApiKey });
+  return geminiClient;
+};
+
+export const getIntent = async (
+  query: string,
+  conversation: ConversationTurn[],
+  librarySummary: LibrarySummary,
+  photos: PhotoRecord[],
+  selectedOption?: string | null,
+): Promise<ParsedIntent> => {
+  const client = getOpenAIClient();
+
+  if (!client) {
+    return parseIntent(query, conversation, photos, selectedOption);
+  }
+
+  const response = await client.responses.create({
+    model: "gpt-4.1-mini",
+    input: [
+      {
+        role: "system",
+        content: [
+          {
+            type: "input_text",
+            text: `You are a photo memories assistant for a public review demo. Output JSON only with keys naturalAnswer, filters, searchMode, confidence, disambiguation, queryText. Available summary: ${JSON.stringify(librarySummary)}.`,
+          },
+        ],
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: JSON.stringify({
+              query,
+              conversation,
+              selectedOption,
+            }),
+          },
+        ],
+      },
+    ],
+  });
+
+  const raw = response.output_text;
+
+  try {
+    return JSON.parse(raw) as ParsedIntent;
+  } catch {
+    return parseIntent(query, conversation, photos, selectedOption);
+  }
+};
+
+export const embedQuery = async (query: string) => {
+  const client = getGeminiClient();
+
+  if (!client) {
+    return query
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean);
+  }
+
+  const response = await client.models.embedContent({
+    model: "text-embedding-004",
+    contents: query,
+  });
+
+  return response.embeddings?.[0]?.values ?? [];
+};
+
+const toTitle = (name: string) =>
+  name
+    .replace(/\.[^/.]+$/, "")
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const tokenizeFileName = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/\.[^/.]+$/, "")
+    .replace(/[-_]/g, " ")
+    .split(/\s+/)
+    .filter((token) => token && !token.includes("unsplash"));
+
+export const analyzeImage = async (file: File) => {
+  const client = getGeminiClient();
+  const title = toTitle(file.name);
+  const fileTokens = tokenizeFileName(file.name);
+
+  if (!client) {
+    const labels = fileTokens.slice(0, 5);
+    return {
+      title,
+      caption: `Uploaded photo: ${title}.`,
+      story: `A newly uploaded memory featuring ${labels.join(", ") || "personal moments"}.`,
+      labels: labels.length ? labels : ["memory", "photo", "upload"],
+      people: [],
+      location: "Unknown",
+      emotion: "warm",
+      color: "#6a994e",
+      searchableText: [title, ...labels].join(" "),
+    };
+  }
+
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const prompt = `Analyze this personal photo for a memory-recall app. Return JSON only with keys: title, caption, story, labels, people, location, emotion, color, searchableText. Keep labels short. If uncertain about people or location, return empty array or "Unknown".`;
+
+  const response = await client.models.generateContent({
+    model: "gemini-2.0-flash",
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            text: prompt,
+          },
+          {
+            inlineData: {
+              mimeType: file.type || "image/jpeg",
+              data: bytes.toString("base64"),
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  const raw = response.text ?? "";
+
+  try {
+    const parsed = JSON.parse(raw) as {
+      title?: string;
+      caption?: string;
+      story?: string;
+      labels?: string[];
+      people?: string[];
+      location?: string;
+      emotion?: string;
+      color?: string;
+      searchableText?: string;
+    };
+
+    return {
+      title: parsed.title || title,
+      caption: parsed.caption || `Uploaded photo: ${title}.`,
+      story: parsed.story || `A newly uploaded memory featuring ${title}.`,
+      labels: parsed.labels?.length ? parsed.labels : fileTokens.slice(0, 5),
+      people: parsed.people ?? [],
+      location: parsed.location || "Unknown",
+      emotion: parsed.emotion || "warm",
+      color: parsed.color || "#6a994e",
+      searchableText:
+        parsed.searchableText ||
+        [parsed.title, parsed.caption, ...(parsed.labels ?? [])]
+          .filter(Boolean)
+          .join(" "),
+    };
+  } catch {
+    const labels = fileTokens.slice(0, 5);
+    return {
+      title,
+      caption: `Uploaded photo: ${title}.`,
+      story: `A newly uploaded memory featuring ${labels.join(", ") || "personal moments"}.`,
+      labels: labels.length ? labels : ["memory", "photo", "upload"],
+      people: [],
+      location: "Unknown",
+      emotion: "warm",
+      color: "#6a994e",
+      searchableText: [title, ...labels].join(" "),
+    };
+  }
+};

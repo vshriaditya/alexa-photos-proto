@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Talk to Your Memories
 
-## Getting Started
+Public review demo for conversational photo recall on Alexa+.
 
-First, run the development server:
+## What is implemented
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Public no-password review experience with a seeded family library
+- 3-panel interface for library context, conversational search, and ranked photo results
+- `POST /api/query` for conversational retrieval with low-confidence fallback chips
+- `POST /api/events` for lightweight reviewer feedback logging
+- Browser voice input via the Web Speech API
+- Real image upload and indexing for batches of up to 25 photos
+- Supabase-ready repository layer with local seeded fallback for development
+- A small set of real public-source demo photos mixed into the seeded library
+- Golden-query tests and a smoke script to catch recall regressions early
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Local development
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Copy `.env.example` to `.env.local`
+2. Add provider keys only if you want live OpenAI, Gemini, or Supabase integrations
+3. Install dependencies with `npm install`
+4. Start the app with `npm run dev`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+If no cloud keys are configured, the app still works in local seeded-demo mode.
+If `ENABLE_PUBLIC_UPLOADS=true`, local uploads are stored in a local runtime store for development and in Supabase Storage when those credentials are configured.
 
-## Learn More
+## Verification
 
-To learn more about Next.js, take a look at the following resources:
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test:run`
+- `npm run check:demo`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Public deployment
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Deploy the repo to Vercel
+- Add the env vars from `.env.example`
+- Apply the SQL in [`supabase/schema.sql`](/Users/aditya/CodexProjects/Photos/Chatbot_LLM/supabase/schema.sql)
+- Create a public storage bucket named `user-uploads`
+- Run `npm run seed:supabase` if you want the seeded library stored in Supabase instead of local fallback mode
+- Keep `ENABLE_PUBLIC_UPLOADS=false` for public review mode
+- Share the generated Vercel URL with the reviewer
 
-## Deploy on Vercel
+## Manual review flow
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Open the public URL and confirm the seeded library loads with no auth wall
+2. Run a recall query like `Show our Yosemite trip last June`
+3. Run a refinement like `Only the ones with Jake`
+4. Trigger fallback with `Show me beach photos`
+5. Submit feedback with the result batch buttons
