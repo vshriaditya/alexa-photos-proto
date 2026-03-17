@@ -25,8 +25,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: payload.error.flatten() }, { status: 400 });
   }
 
-  const response = await executeQuery(payload.data);
-  const parsed = queryResponseSchema.parse(response);
+  try {
+    const response = await executeQuery(payload.data);
+    const parsed = queryResponseSchema.parse(response);
 
-  return NextResponse.json(parsed);
+    return NextResponse.json(parsed);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "The demo could not complete that request.",
+      },
+      { status: 500 },
+    );
+  }
 }

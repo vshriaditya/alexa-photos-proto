@@ -11,6 +11,7 @@ Public review demo for conversational photo recall on Alexa+.
 - Browser voice input via the Web Speech API
 - Real image upload and indexing for batches of up to 25 photos
 - OpenAI-powered image understanding for uploaded photos
+- Inspectable raw model output and editable metadata for uploaded photos
 - Supabase-ready repository layer with local seeded fallback for development
 - A small set of real public-source demo photos mixed into the seeded library
 - Golden-query tests and a smoke script to catch recall regressions early

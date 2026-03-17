@@ -25,6 +25,7 @@ export const photoResultSchema = z.object({
   emotion: z.string(),
   color: z.string(),
   searchableText: z.string().optional(),
+  rawAnalysis: z.string().nullable().optional(),
   score: z.number(),
   topLabels: z.array(z.string()),
 });
@@ -90,4 +91,14 @@ export const uploadResponseSchema = z.object({
     highlights: z.array(z.string()),
   }),
   error: z.string().optional(),
+});
+
+export const photoUpdateRequestSchema = z.object({
+  title: z.string().min(1),
+  caption: z.string().min(1),
+  story: z.string().min(1),
+  labels: z.array(z.string()),
+  people: z.array(z.string()),
+  location: z.string().min(1),
+  emotion: z.string().min(1),
 });

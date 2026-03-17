@@ -44,38 +44,42 @@ export const getIntent = async (
     return parseIntent(query, conversation, photos, selectedOption);
   }
 
-  const response = await client.responses.create({
-    model: "gpt-4.1-mini",
-    input: [
-      {
-        role: "system",
-        content: [
-          {
-            type: "input_text",
-            text: `You are a photo memories assistant for a public review demo. Output JSON only with keys naturalAnswer, filters, searchMode, confidence, disambiguation, queryText. Available summary: ${JSON.stringify(librarySummary)}.`,
-          },
-        ],
-      },
-      {
-        role: "user",
-        content: [
-          {
-            type: "input_text",
-            text: JSON.stringify({
-              query,
-              conversation,
-              selectedOption,
-            }),
-          },
-        ],
-      },
-    ],
-  });
-
-  const raw = response.output_text;
-
   try {
-    return JSON.parse(raw) as ParsedIntent;
+    const response = await client.responses.create({
+      model: "gpt-4.1-mini",
+      input: [
+        {
+          role: "system",
+          content: [
+            {
+              type: "input_text",
+              text: `You are a photo memories assistant for a public review demo. Output JSON only with keys naturalAnswer, filters, searchMode, confidence, disambiguation, queryText. Available summary: ${JSON.stringify(librarySummary)}.`,
+            },
+          ],
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: JSON.stringify({
+                query,
+                conversation,
+                selectedOption,
+              }),
+            },
+          ],
+        },
+      ],
+    });
+
+    const raw = response.output_text;
+
+    try {
+      return JSON.parse(raw) as ParsedIntent;
+    } catch {
+      return parseIntent(query, conversation, photos, selectedOption);
+    }
   } catch {
     return parseIntent(query, conversation, photos, selectedOption);
   }
@@ -113,13 +117,30 @@ const tokenizeFileName = (name: string) =>
     .split(/\s+/)
     .filter((token) => token && !token.includes("unsplash"));
 
+const stopTokens = new Set([
+  "img",
+  "image",
+  "photo",
+  "upload",
+  "uploaded",
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+]);
+
+const buildFallbackLabels = (tokens: string[]) => {
+  const cleaned = tokens.filter((token) => token.length > 2 && !stopTokens.has(token));
+  return cleaned.slice(0, 4);
+};
+
 export const analyzeImage = async (file: File) => {
   const client = getOpenAIClient();
   const title = toTitle(file.name);
   const fileTokens = tokenizeFileName(file.name);
 
   if (!client) {
-    const labels = fileTokens.slice(0, 5);
+    const labels = buildFallbackLabels(fileTokens);
     return {
       title,
       caption: `Uploaded photo: ${title}.`,
@@ -130,6 +151,7 @@ export const analyzeImage = async (file: File) => {
       emotion: "warm",
       color: "#6a994e",
       searchableText: [title, ...labels].join(" "),
+      rawAnalysis: null,
     };
   }
 
@@ -143,29 +165,28 @@ export const analyzeImage = async (file: File) => {
     'If uncertain about people or location, return an empty array or "Unknown".',
   ].join(" ");
 
-  const response = await client.responses.create({
-    model: "gpt-4.1-mini",
-    input: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "input_text",
-            text: prompt,
-          },
-          {
-            type: "input_image",
-            image_url: dataUrl,
-            detail: "low",
-          },
-        ],
-      },
-    ],
-  });
-
-  const raw = response.output_text ?? "";
-
   try {
+    const response = await client.responses.create({
+      model: "gpt-4.1-mini",
+      input: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: prompt,
+            },
+            {
+              type: "input_image",
+              image_url: dataUrl,
+              detail: "low",
+            },
+          ],
+        },
+      ],
+    });
+
+    const raw = response.output_text ?? "";
     const parsed = JSON.parse(raw) as {
       title?: string;
       caption?: string;
@@ -182,7 +203,7 @@ export const analyzeImage = async (file: File) => {
       title: parsed.title || title,
       caption: parsed.caption || `Uploaded photo: ${title}.`,
       story: parsed.story || `A newly uploaded memory featuring ${title}.`,
-      labels: parsed.labels?.length ? parsed.labels : fileTokens.slice(0, 5),
+      labels: parsed.labels?.length ? parsed.labels : buildFallbackLabels(fileTokens),
       people: parsed.people ?? [],
       location: parsed.location || "Unknown",
       emotion: parsed.emotion || "warm",
@@ -192,9 +213,10 @@ export const analyzeImage = async (file: File) => {
         [parsed.title, parsed.caption, ...(parsed.labels ?? [])]
           .filter(Boolean)
           .join(" "),
+      rawAnalysis: raw,
     };
   } catch {
-    const labels = fileTokens.slice(0, 5);
+    const labels = buildFallbackLabels(fileTokens);
     return {
       title,
       caption: `Uploaded photo: ${title}.`,
@@ -205,6 +227,7 @@ export const analyzeImage = async (file: File) => {
       emotion: "warm",
       color: "#6a994e",
       searchableText: [title, ...labels].join(" "),
+      rawAnalysis: null,
     };
   }
 };

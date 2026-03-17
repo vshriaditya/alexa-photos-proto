@@ -52,4 +52,27 @@ describe("ReviewDemo", () => {
 
     expect(fetchMock).toHaveBeenCalled();
   });
+
+  it("opens uploaded photo metadata for inspection", () => {
+    render(
+      <ReviewDemo
+        librarySummary={demoLibrarySummary}
+        uploadsEnabled
+        initialResults={[
+          {
+            ...demoLibrary[0],
+            source: "uploaded",
+            rawAnalysis: "{\"labels\":[\"mountain\"]}",
+            score: 1,
+            topLabels: demoLibrary[0].labels.slice(0, 2),
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Inspect metadata"));
+
+    expect(screen.getByText("Edit Metadata")).toBeInTheDocument();
+    expect(screen.getByText("Raw model output")).toBeInTheDocument();
+  });
 });

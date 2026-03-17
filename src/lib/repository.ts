@@ -27,6 +27,7 @@ type SupabaseRow = {
   emotion: string;
   color: string;
   searchable_text?: string | null;
+  raw_analysis?: string | null;
   batch_id?: string | null;
   status?: "uploading" | "indexing" | "ready" | "failed";
   source?: "seeded" | "uploaded";
@@ -59,6 +60,7 @@ const mapPhotoRow = (row: SupabaseRow): PhotoRecord => ({
   emotion: row.emotion,
   color: row.color,
   searchableText: row.searchable_text ?? undefined,
+  rawAnalysis: row.raw_analysis ?? null,
   batchId: row.batch_id ?? null,
   status: row.status ?? "ready",
   source: row.source ?? "uploaded",
@@ -255,6 +257,7 @@ export const saveIndexedPhoto = async (photo: PhotoRecord) => {
     emotion: photo.emotion,
     color: photo.color,
     searchable_text: photo.searchableText ?? null,
+    raw_analysis: photo.rawAnalysis ?? null,
   };
 
   const { error } = await client!.from("photos").upsert(payload, {
@@ -266,4 +269,87 @@ export const saveIndexedPhoto = async (photo: PhotoRecord) => {
   }
 
   return photo;
+};
+
+export const getPhotoById = async (photoId: string): Promise<PhotoRecord | null> => {
+  if (!hasSupabase) {
+    const localPhotos = await getLocalPhotos();
+    return localPhotos.find((photo) => photo.id === photoId) ?? null;
+  }
+
+  const client = createAdminClient();
+  const { data, error } = await client!
+    .from("photos")
+    .select("*")
+    .eq("id", photoId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return mapPhotoRow(data as SupabaseRow);
+};
+
+export const updatePhotoMetadata = async (
+  photoId: string,
+  updates: Pick<
+    PhotoRecord,
+    "title" | "caption" | "story" | "labels" | "people" | "location" | "emotion"
+  >,
+) => {
+  if (!hasSupabase) {
+    const photo = await getPhotoById(photoId);
+    if (!photo) {
+      throw new Error("Photo not found.");
+    }
+
+    const updatedPhoto: PhotoRecord = {
+      ...photo,
+      ...updates,
+      searchableText: [
+        updates.title,
+        updates.caption,
+        updates.story,
+        ...updates.labels,
+        ...updates.people,
+        updates.location,
+        updates.emotion,
+      ]
+        .filter(Boolean)
+        .join(" "),
+    };
+
+    await upsertLocalPhoto(updatedPhoto);
+    return updatedPhoto;
+  }
+
+  const client = createAdminClient();
+  const payload = {
+    title: updates.title,
+    caption: updates.caption,
+    story: updates.story,
+    labels: updates.labels,
+    people: updates.people,
+    location: updates.location,
+    emotion: updates.emotion,
+    searchable_text: [
+      updates.title,
+      updates.caption,
+      updates.story,
+      ...updates.labels,
+      ...updates.people,
+      updates.location,
+      updates.emotion,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  };
+
+  const { error } = await client!.from("photos").update(payload).eq("id", photoId);
+  if (error) {
+    throw new Error(`Photo update failed: ${error.message}`);
+  }
+
+  return getPhotoById(photoId);
 };

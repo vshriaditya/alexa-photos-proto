@@ -82,6 +82,16 @@ export function ReviewDemo({
   const [chips, setChips] = useState<string[]>([]);
   const [uploadBatch, setUploadBatch] = useState<UploadBatch | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<PhotoResult | null>(null);
+  const [editDraft, setEditDraft] = useState({
+    title: "",
+    caption: "",
+    story: "",
+    labels: "",
+    people: "",
+    location: "",
+    emotion: "",
+  });
   const [sessionId] = useState(createSessionId);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -120,7 +130,12 @@ export function ReviewDemo({
       });
 
       if (!response.ok) {
-        throw new Error("The demo could not complete that request.");
+        const failure = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        throw new Error(
+          failure?.error || "The demo could not complete that request.",
+        );
       }
 
       const data = (await response.json()) as QueryResponse;
@@ -226,6 +241,62 @@ export function ReviewDemo({
   const latestAssistantMessage =
     [...conversation].reverse().find((turn) => turn.role === "assistant")?.content ??
     starters[0].content;
+
+  const openMetadataEditor = (photo: PhotoResult) => {
+    setSelectedPhoto(photo);
+    setEditDraft({
+      title: photo.title,
+      caption: photo.caption,
+      story: photo.story,
+      labels: photo.labels.join(", "),
+      people: photo.people.join(", "),
+      location: photo.location,
+      emotion: photo.emotion,
+    });
+  };
+
+  const saveMetadataEdits = async () => {
+    if (!selectedPhoto) {
+      return;
+    }
+
+    const response = await fetch(`/api/photos/${selectedPhoto.id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title: editDraft.title,
+        caption: editDraft.caption,
+        story: editDraft.story,
+        labels: editDraft.labels
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean),
+        people: editDraft.people
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean),
+        location: editDraft.location,
+        emotion: editDraft.emotion,
+      }),
+    });
+
+    if (!response.ok) {
+      const failure = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+      setError(failure?.error || "Could not save photo metadata.");
+      return;
+    }
+
+    const updated = (await response.json()) as PhotoResult;
+    setResults((current) =>
+      current.map((photo) => (photo.id === updated.id ? updated : photo)),
+    );
+    setSelectedPhoto(updated);
+    setError(null);
+  };
 
   const handleUploadSelection = async (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(event.target.files ?? []);
@@ -506,10 +577,112 @@ export function ReviewDemo({
                       </span>
                     ))}
                   </div>
+                  {photo.source === "uploaded" ? (
+                    <button
+                      type="button"
+                      className="metaButton"
+                      onClick={() => openMetadataEditor(photo)}
+                    >
+                      Inspect metadata
+                    </button>
+                  ) : null}
                 </div>
               </article>
             ))}
           </div>
+          {selectedPhoto ? (
+            <section className="metadataPanel">
+              <div className="panelHeader">
+                <h2>Edit Metadata</h2>
+                <button
+                  type="button"
+                  className="feedbackButton"
+                  onClick={() => setSelectedPhoto(null)}
+                >
+                  Close
+                </button>
+              </div>
+              <p className="panelCopy">
+                Review the generated tags and fix anything that looks wrong before relying on search quality.
+              </p>
+              <div className="fieldGrid">
+                <label>
+                  <span>Title</span>
+                  <input
+                    value={editDraft.title}
+                    onChange={(event) =>
+                      setEditDraft((current) => ({ ...current, title: event.target.value }))
+                    }
+                  />
+                </label>
+                <label>
+                  <span>Location</span>
+                  <input
+                    value={editDraft.location}
+                    onChange={(event) =>
+                      setEditDraft((current) => ({ ...current, location: event.target.value }))
+                    }
+                  />
+                </label>
+                <label>
+                  <span>Caption</span>
+                  <textarea
+                    rows={3}
+                    value={editDraft.caption}
+                    onChange={(event) =>
+                      setEditDraft((current) => ({ ...current, caption: event.target.value }))
+                    }
+                  />
+                </label>
+                <label>
+                  <span>Story</span>
+                  <textarea
+                    rows={3}
+                    value={editDraft.story}
+                    onChange={(event) =>
+                      setEditDraft((current) => ({ ...current, story: event.target.value }))
+                    }
+                  />
+                </label>
+                <label>
+                  <span>Labels</span>
+                  <input
+                    value={editDraft.labels}
+                    onChange={(event) =>
+                      setEditDraft((current) => ({ ...current, labels: event.target.value }))
+                    }
+                  />
+                </label>
+                <label>
+                  <span>People</span>
+                  <input
+                    value={editDraft.people}
+                    onChange={(event) =>
+                      setEditDraft((current) => ({ ...current, people: event.target.value }))
+                    }
+                  />
+                </label>
+                <label>
+                  <span>Emotion</span>
+                  <input
+                    value={editDraft.emotion}
+                    onChange={(event) =>
+                      setEditDraft((current) => ({ ...current, emotion: event.target.value }))
+                    }
+                  />
+                </label>
+              </div>
+              <div className="metadataActions">
+                <button type="button" className="submitButton" onClick={() => void saveMetadataEdits()}>
+                  Save edits
+                </button>
+              </div>
+              <details className="rawAnalysis">
+                <summary>Raw model output</summary>
+                <pre>{selectedPhoto.rawAnalysis || "No raw analysis stored for this photo."}</pre>
+              </details>
+            </section>
+          ) : null}
         </section>
       </section>
     </main>

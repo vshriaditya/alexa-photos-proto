@@ -76,6 +76,7 @@ export const ingestUploadedPhoto = async (
       emotion: analysis.emotion,
       color: analysis.color,
       searchableText: analysis.searchableText,
+      rawAnalysis: analysis.rawAnalysis ?? null,
     };
 
     await saveIndexedPhoto(photo);

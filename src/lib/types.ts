@@ -42,6 +42,7 @@ export interface PhotoRecord {
   emotion: string;
   color: string;
   searchableText?: string;
+  rawAnalysis?: string | null;
 }
 
 export interface PhotoResult extends PhotoRecord {
@@ -107,4 +108,14 @@ export interface UploadResponse {
   photo: PhotoRecord | null;
   librarySummary: LibrarySummary;
   error?: string;
+}
+
+export interface PhotoUpdateRequest {
+  title: string;
+  caption: string;
+  story: string;
+  labels: string[];
+  people: string[];
+  location: string;
+  emotion: string;
 }
