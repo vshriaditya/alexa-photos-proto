@@ -108,3 +108,13 @@ export const photoUpdateRequestSchema = z.object({
   location: z.string().min(1),
   emotion: z.string().min(1),
 });
+
+export const resetUploadsResponseSchema = z.object({
+  librarySummary: z.object({
+    photoCount: z.number(),
+    tagChips: z.array(z.string()),
+    prompts: z.array(z.string()),
+    highlights: z.array(z.string()),
+  }),
+  results: z.array(photoResultSchema.omit({ score: true, topLabels: true })),
+});

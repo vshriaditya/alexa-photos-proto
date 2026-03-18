@@ -23,6 +23,25 @@ const monthMap: Record<string, number> = {
 };
 
 const unique = (items: string[]) => [...new Set(items)];
+const stopWords = new Set([
+  "show",
+  "me",
+  "photos",
+  "photo",
+  "pictures",
+  "picture",
+  "images",
+  "image",
+  "of",
+  "the",
+  "a",
+  "an",
+  "our",
+  "my",
+  "find",
+  "only",
+  "just",
+]);
 
 const tokenize = (text: string) =>
   text
@@ -30,6 +49,9 @@ const tokenize = (text: string) =>
     .replace(/[^a-z0-9\s]/g, " ")
     .split(/\s+/)
     .filter(Boolean);
+
+const getMeaningfulTokens = (text: string) =>
+  tokenize(text).filter((token) => !stopWords.has(token));
 
 const inferYear = (query: string) => {
   const match = query.match(/\b(20\d{2})\b/);
@@ -121,7 +143,7 @@ export const parseIntent = (
 };
 
 export const scorePhoto = (photo: PhotoRecord, intent: ParsedIntent) => {
-  const queryTokens = tokenize(intent.queryText);
+  const queryTokens = getMeaningfulTokens(intent.queryText);
   const photoText = [
     photo.title,
     photo.caption,
@@ -190,7 +212,11 @@ export const applyFilters = (photos: PhotoRecord[], filters: QueryFilters) =>
     const labelsMatch =
       !filters.labels?.length ||
       filters.labels.some((label) =>
-        photo.labels.some((photoLabel) =>
+        [
+          ...photo.labels,
+          ...(photo.normalizedTags ?? []),
+          ...(photo.primarySubject ? [photo.primarySubject] : []),
+        ].some((photoLabel) =>
           photoLabel.toLowerCase().includes(label.toLowerCase()),
         ),
       );
@@ -225,6 +251,23 @@ export const rankPhotos = (photos: PhotoRecord[], intent: ParsedIntent): PhotoRe
     }))
     .sort((left, right) => right.score - left.score)
     .slice(0, 12);
+};
+
+export const countStrongMatches = (photos: PhotoResult[], queryText: string) => {
+  const queryTokens = getMeaningfulTokens(queryText);
+
+  return photos.filter((photo) => {
+    const exactPool = [
+      ...photo.labels,
+      ...(photo.normalizedTags ?? []),
+      ...(photo.primarySubject ? [photo.primarySubject] : []),
+      ...(photo.people ?? []),
+    ].map((value) => value.toLowerCase());
+
+    return queryTokens.some((token) =>
+      exactPool.some((candidate) => candidate.includes(token)),
+    );
+  }).length;
 };
 
 export const runQuery = (

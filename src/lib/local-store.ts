@@ -68,3 +68,7 @@ export const getLocalBatch = async (batchId: string) => {
   const state = await readLocalState();
   return state.batches.find((batch) => batch.id === batchId) ?? null;
 };
+
+export const resetLocalUploads = async () => {
+  await writeLocalState(defaultState());
+};

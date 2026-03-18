@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { demoLibrary, goldenQueries } from "@/lib/demo-library";
-import { parseIntent, rankPhotos, runQuery } from "@/lib/search";
+import { countStrongMatches, parseIntent, rankPhotos, runQuery } from "@/lib/search";
 
 describe("search contracts", () => {
   it("extracts structured filters from a direct recall query", () => {
@@ -31,5 +31,30 @@ describe("search contracts", () => {
       const results = rankPhotos(demoLibrary, intent);
       expect(results[0]?.id).toBe(fixture.expectedTopId);
     }
+  });
+
+  it("counts explicit tag matches for uploaded-photo style queries", () => {
+    const photos = [
+      {
+        id: "photo-1",
+        title: "Peaceful Naptime",
+        imageUrl: "/baby.jpg",
+        caption: "A baby sleeping on a bed.",
+        story: "A baby naptime moment.",
+        labels: ["baby", "bed"],
+        people: [],
+        year: 2026,
+        month: 3,
+        location: "Unknown",
+        emotion: "peaceful",
+        color: "#ffffff",
+        normalizedTags: ["baby", "infant", "bed"],
+      },
+    ];
+
+    const intent = parseIntent("Show me baby photos", [], photos);
+    const results = rankPhotos(photos, intent);
+
+    expect(countStrongMatches(results, "Show me baby photos")).toBe(1);
   });
 });

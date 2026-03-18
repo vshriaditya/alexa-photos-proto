@@ -9,6 +9,7 @@ import type {
   LibrarySummary,
   PhotoResult,
   QueryResponse,
+  ResetUploadsResponse,
   UploadBatch,
   UploadResponse,
 } from "@/lib/types";
@@ -380,6 +381,51 @@ export function ReviewDemo({
     event.target.value = "";
   };
 
+  const handleResetUploads = async () => {
+    setError(null);
+    setStatusText("Clearing uploads...");
+
+    try {
+      const response = await fetch("/api/uploads/reset", {
+        method: "POST",
+      });
+
+      const data = (await response.json().catch(() => null)) as
+        | (ResetUploadsResponse & { error?: string })
+        | null;
+
+      if (!response.ok || !data) {
+        throw new Error(data?.error || "Could not clear uploaded photos.");
+      }
+
+      setLibraryState(data.librarySummary);
+      setResults(
+        data.results.slice(0, 6).map((photo) => ({
+          ...photo,
+          score: 1,
+          topLabels: photo.labels.slice(0, 2),
+        })),
+      );
+      setUploadBatch(null);
+      setSelectedPhoto(null);
+      setConversation((current) => [
+        ...current,
+        {
+          role: "assistant",
+          content: "I cleared the uploaded photos and reset the library to a fresh starting point.",
+        },
+      ]);
+      setStatusText("Ready");
+    } catch (resetError) {
+      setError(
+        resetError instanceof Error
+          ? resetError.message
+          : "Could not reset uploaded photos.",
+      );
+      setStatusText("Error");
+    }
+  };
+
   return (
     <main className="shell">
       <section className="hero">
@@ -438,6 +484,15 @@ export function ReviewDemo({
                 className="srOnly"
                 onChange={handleUploadSelection}
               />
+              <button
+                type="button"
+                className="promptButton"
+                onClick={() => {
+                  void handleResetUploads();
+                }}
+              >
+                Clear uploaded photos
+              </button>
               {uploadBatch ? (
                 <div className="progressCard">
                   <p>

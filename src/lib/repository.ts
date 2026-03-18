@@ -1,11 +1,17 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { createClient } from "@supabase/supabase-js";
 
 import { demoLibrary, demoLibrarySummary } from "@/lib/demo-library";
 import { env, hasSupabase } from "@/lib/env";
-import { getLocalBatch, getLocalPhotos, upsertLocalBatch, upsertLocalPhoto } from "@/lib/local-store";
+import {
+  getLocalBatch,
+  getLocalPhotos,
+  resetLocalUploads,
+  upsertLocalBatch,
+  upsertLocalPhoto,
+} from "@/lib/local-store";
 import type {
   EventPayload,
   LibrarySummary,
@@ -370,4 +376,51 @@ export const updatePhotoMetadata = async (
   }
 
   return getPhotoById(photoId);
+};
+
+export const resetUploadedPhotos = async () => {
+  if (!hasSupabase) {
+    await resetLocalUploads();
+    await rm(LOCAL_UPLOADS_DIR, { recursive: true, force: true });
+    return {
+      librarySummary: await getLibrarySummary(),
+      results: await getPhotoLibrary(),
+    };
+  }
+
+  const client = createAdminClient();
+  const { data: objects } = await client!.storage.from(UPLOAD_BUCKET).list("", {
+    limit: 1000,
+  });
+
+  const fileNames = (objects ?? [])
+    .map((object) => object.name)
+    .filter(Boolean);
+
+  if (fileNames.length) {
+    await client!.storage.from(UPLOAD_BUCKET).remove(fileNames);
+  }
+
+  const { error: photoDeleteError } = await client!
+    .from("photos")
+    .delete()
+    .eq("source", "uploaded");
+
+  if (photoDeleteError) {
+    throw new Error(`Could not clear uploaded photos: ${photoDeleteError.message}`);
+  }
+
+  const { error: batchDeleteError } = await client!
+    .from("upload_batches")
+    .delete()
+    .neq("id", "");
+
+  if (batchDeleteError) {
+    throw new Error(`Could not clear upload batches: ${batchDeleteError.message}`);
+  }
+
+  return {
+    librarySummary: await getLibrarySummary(),
+    results: await getPhotoLibrary(),
+  };
 };

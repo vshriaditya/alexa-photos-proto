@@ -125,3 +125,8 @@ export interface PhotoUpdateRequest {
   location: string;
   emotion: string;
 }
+
+export interface ResetUploadsResponse {
+  librarySummary: LibrarySummary;
+  results: PhotoRecord[];
+}

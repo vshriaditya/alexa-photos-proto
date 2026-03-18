@@ -1,8 +1,34 @@
 import { demoLibrarySummary } from "@/lib/demo-library";
 import { getIntent } from "@/lib/providers";
 import { getLibrarySummary, getPhotoLibrary, storeEvent } from "@/lib/repository";
-import { rankPhotos } from "@/lib/search";
+import { countStrongMatches, rankPhotos } from "@/lib/search";
 import type { EventPayload, QueryRequest, QueryResponse } from "@/lib/types";
+
+const buildResultDrivenAnswer = (
+  query: string,
+  intentAnswer: string,
+  resultCount: number,
+  strongMatchCount: number,
+) => {
+  if (!resultCount) {
+    return "I could not find a matching moment in this library. Try another person, location, or timeframe.";
+  }
+
+  if (strongMatchCount > 0) {
+    return `I found ${strongMatchCount} strong match${strongMatchCount === 1 ? "" : "es"} for "${query}". Here ${strongMatchCount === 1 ? "is" : "are"} the closest memories.`;
+  }
+
+  const lowered = intentAnswer.toLowerCase();
+  if (
+    lowered.includes("could not find") ||
+    lowered.includes("couldn't find") ||
+    lowered.includes("no photos")
+  ) {
+    return `I found nearby matches for "${query}", but not an exact tagged hit yet. Here are the closest memories.`;
+  }
+
+  return `${intentAnswer} Here are ${resultCount} memories that look closest.`;
+};
 
 export const executeQuery = async ({
   query,
@@ -45,6 +71,7 @@ export const executeQuery = async ({
   }
 
   const results = rankPhotos(photos, intent);
+  const strongMatchCount = countStrongMatches(results, intent.queryText);
   const looksLikeRefinement = conversation.some((turn) => turn.role === "assistant");
 
   await storeEvent({
@@ -59,10 +86,12 @@ export const executeQuery = async ({
   });
 
   return {
-    naturalAnswer:
-      results.length > 0
-        ? `${intent.naturalAnswer} Here are ${results.length} memories that look closest.`
-        : "I could not find a matching moment in this seeded library. Try another person, location, or timeframe.",
+    naturalAnswer: buildResultDrivenAnswer(
+      query,
+      intent.naturalAnswer,
+      results.length,
+      strongMatchCount,
+    ),
     confidence: intent.confidence,
     searchMode: intent.searchMode,
     filters: intent.filters,
