@@ -26,6 +26,12 @@ export const photoResultSchema = z.object({
   color: z.string(),
   searchableText: z.string().optional(),
   rawAnalysis: z.string().nullable().optional(),
+  primarySubject: z.string().nullable().optional(),
+  secondarySubjects: z.array(z.string()).optional(),
+  objects: z.array(z.string()).optional(),
+  scene: z.string().nullable().optional(),
+  activities: z.array(z.string()).optional(),
+  normalizedTags: z.array(z.string()).optional(),
   score: z.number(),
   topLabels: z.array(z.string()),
 });

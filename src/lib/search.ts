@@ -127,10 +127,15 @@ export const scorePhoto = (photo: PhotoRecord, intent: ParsedIntent) => {
     photo.caption,
     photo.story,
     photo.searchableText,
+    photo.primarySubject,
+    photo.scene,
     photo.location,
     photo.emotion,
     ...photo.labels,
     ...photo.people,
+    ...(photo.objects ?? []),
+    ...(photo.activities ?? []),
+    ...(photo.normalizedTags ?? []),
   ]
     .join(" ")
     .toLowerCase();
@@ -148,6 +153,21 @@ export const scorePhoto = (photo: PhotoRecord, intent: ParsedIntent) => {
 
   if (intent.filters.labels?.some((label) => photo.labels.includes(label))) {
     score += 3;
+  }
+
+  if (
+    photo.normalizedTags?.some((tag) =>
+      queryTokens.some((token) => tag.includes(token)),
+    )
+  ) {
+    score += 6;
+  }
+
+  if (
+    photo.primarySubject &&
+    queryTokens.some((token) => photo.primarySubject?.includes(token))
+  ) {
+    score += 5;
   }
 
   if (intent.filters.location && photo.location === intent.filters.location) {

@@ -28,6 +28,12 @@ type SupabaseRow = {
   color: string;
   searchable_text?: string | null;
   raw_analysis?: string | null;
+  primary_subject?: string | null;
+  secondary_subjects?: string[] | null;
+  objects?: string[] | null;
+  scene?: string | null;
+  activities?: string[] | null;
+  normalized_tags?: string[] | null;
   batch_id?: string | null;
   status?: "uploading" | "indexing" | "ready" | "failed";
   source?: "seeded" | "uploaded";
@@ -61,6 +67,12 @@ const mapPhotoRow = (row: SupabaseRow): PhotoRecord => ({
   color: row.color,
   searchableText: row.searchable_text ?? undefined,
   rawAnalysis: row.raw_analysis ?? null,
+  primarySubject: row.primary_subject ?? null,
+  secondarySubjects: row.secondary_subjects ?? [],
+  objects: row.objects ?? [],
+  scene: row.scene ?? null,
+  activities: row.activities ?? [],
+  normalizedTags: row.normalized_tags ?? [],
   batchId: row.batch_id ?? null,
   status: row.status ?? "ready",
   source: row.source ?? "uploaded",
@@ -258,6 +270,12 @@ export const saveIndexedPhoto = async (photo: PhotoRecord) => {
     color: photo.color,
     searchable_text: photo.searchableText ?? null,
     raw_analysis: photo.rawAnalysis ?? null,
+    primary_subject: photo.primarySubject ?? null,
+    secondary_subjects: photo.secondarySubjects ?? [],
+    objects: photo.objects ?? [],
+    scene: photo.scene ?? null,
+    activities: photo.activities ?? [],
+    normalized_tags: photo.normalizedTags ?? [],
   };
 
   const { error } = await client!.from("photos").upsert(payload, {

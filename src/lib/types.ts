@@ -43,6 +43,12 @@ export interface PhotoRecord {
   color: string;
   searchableText?: string;
   rawAnalysis?: string | null;
+  primarySubject?: string | null;
+  secondarySubjects?: string[];
+  objects?: string[];
+  scene?: string | null;
+  activities?: string[];
+  normalizedTags?: string[];
 }
 
 export interface PhotoResult extends PhotoRecord {

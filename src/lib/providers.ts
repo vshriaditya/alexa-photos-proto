@@ -3,6 +3,7 @@ import OpenAI from "openai";
 
 import { env } from "@/lib/env";
 import { parseIntent } from "@/lib/search";
+import { expandNormalizedTags } from "@/lib/tag-normalization";
 import type {
   ConversationTurn,
   LibrarySummary,
@@ -207,9 +208,20 @@ export const analyzeImage = async (file: File) => {
   const client = getOpenAIClient();
   const title = toTitle(file.name);
   const fileTokens = tokenizeFileName(file.name);
+  console.info("[analyzeImage] start", {
+    fileName: file.name,
+    fileType: file.type,
+    hasOpenAIClient: Boolean(client),
+  });
 
   if (!client) {
     const labels = buildFallbackLabels(fileTokens);
+    const normalizedTags = expandNormalizedTags([title, ...labels]);
+    console.info("[analyzeImage] fallback:no-client", {
+      fileName: file.name,
+      labels,
+      normalizedTags,
+    });
     return {
       title,
       caption: `Uploaded photo: ${title}.`,
@@ -219,8 +231,14 @@ export const analyzeImage = async (file: File) => {
       location: "Unknown",
       emotion: "warm",
       color: "#6a994e",
-      searchableText: [title, ...labels].join(" "),
+      searchableText: [title, ...labels, ...normalizedTags].join(" "),
       rawAnalysis: null,
+      primarySubject: normalizedTags[0] ?? null,
+      secondarySubjects: labels.slice(1),
+      objects: labels,
+      scene: "unknown",
+      activities: [],
+      normalizedTags,
     };
   }
 
@@ -229,13 +247,19 @@ export const analyzeImage = async (file: File) => {
   const dataUrl = `data:${mimeType};base64,${bytes.toString("base64")}`;
   const prompt = [
     "Analyze this personal photo for a memory-recall app.",
-    "Return JSON only with keys: title, caption, story, labels, people, location, emotion, color, searchableText.",
-    "Keep labels short and useful for natural-language search.",
-    "Prefer concrete visual labels like baby, infant, child, mountain, beach, dog, cat, sunset, lake, forest, soccer, food, family, portrait when they apply.",
+    "Return JSON only with keys: title, caption, story, primarySubject, secondarySubjects, objects, scene, activities, people, location, emotion, color, searchTags, confidenceNotes.",
+    "Keep all arrays short and concrete.",
+    "For visible obvious subjects, prefer concrete visual labels like baby, infant, child, mountain, beach, dog, cat, sunset, lake, forest, soccer, food, family, portrait, car when they apply.",
+    "searchTags must contain the best direct search words a user would type.",
     'If uncertain about people or location, return an empty array or "Unknown".',
   ].join(" ");
 
   try {
+    console.info("[analyzeImage] calling-openai", {
+      fileName: file.name,
+      model: "gpt-4.1-mini",
+      mimeType,
+    });
     const response = await client.responses.create({
       model: "gpt-4.1-mini",
       input: [
@@ -257,36 +281,77 @@ export const analyzeImage = async (file: File) => {
     });
 
     const raw = response.output_text ?? "";
+    console.info("[analyzeImage] openai-response", {
+      fileName: file.name,
+      hasOutputText: Boolean(raw),
+      preview: raw.slice(0, 300),
+    });
     const parsed = JSON.parse(raw) as {
       title?: string;
       caption?: string;
       story?: string;
-      labels?: string[];
+      primarySubject?: string;
+      secondarySubjects?: string[];
+      objects?: string[];
+      scene?: string;
+      activities?: string[];
       people?: string[];
       location?: string;
       emotion?: string;
       color?: string;
-      searchableText?: string;
+      searchTags?: string[];
+      confidenceNotes?: string;
     };
+
+    const labels = [
+      parsed.primarySubject,
+      ...(parsed.secondarySubjects ?? []),
+      ...(parsed.objects ?? []),
+      ...(parsed.searchTags ?? []),
+    ]
+      .filter((value): value is string => Boolean(value))
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const normalizedTags = expandNormalizedTags(labels);
+    const searchableText = [
+      parsed.title,
+      parsed.caption,
+      parsed.story,
+      ...(parsed.searchTags ?? []),
+      ...normalizedTags,
+      parsed.scene,
+      ...(parsed.activities ?? []),
+    ]
+      .filter(Boolean)
+      .join(" ");
 
     return {
       title: parsed.title || title,
       caption: parsed.caption || `Uploaded photo: ${title}.`,
       story: parsed.story || `A newly uploaded memory featuring ${title}.`,
-      labels: parsed.labels?.length ? parsed.labels : buildFallbackLabels(fileTokens),
+      labels: labels.length ? labels : buildFallbackLabels(fileTokens),
       people: parsed.people ?? [],
       location: parsed.location || "Unknown",
       emotion: parsed.emotion || "warm",
       color: parsed.color || "#6a994e",
-      searchableText:
-        parsed.searchableText ||
-        [parsed.title, parsed.caption, ...(parsed.labels ?? [])]
-          .filter(Boolean)
-          .join(" "),
+      searchableText,
       rawAnalysis: raw,
+      primarySubject: parsed.primarySubject || normalizedTags[0] || null,
+      secondarySubjects: parsed.secondarySubjects ?? [],
+      objects: parsed.objects ?? [],
+      scene: parsed.scene || "unknown",
+      activities: parsed.activities ?? [],
+      normalizedTags,
     };
-  } catch {
+  } catch (error) {
     const labels = buildFallbackLabels(fileTokens);
+    const normalizedTags = expandNormalizedTags([title, ...labels]);
+    console.error("[analyzeImage] fallback:error", {
+      fileName: file.name,
+      error: error instanceof Error ? error.message : String(error),
+      labels,
+      normalizedTags,
+    });
     return {
       title,
       caption: `Uploaded photo: ${title}.`,
@@ -296,8 +361,14 @@ export const analyzeImage = async (file: File) => {
       location: "Unknown",
       emotion: "warm",
       color: "#6a994e",
-      searchableText: [title, ...labels].join(" "),
+      searchableText: [title, ...labels, ...normalizedTags].join(" "),
       rawAnalysis: null,
+      primarySubject: normalizedTags[0] ?? null,
+      secondarySubjects: labels.slice(1),
+      objects: labels,
+      scene: "unknown",
+      activities: [],
+      normalizedTags,
     };
   }
 };
