@@ -13,7 +13,7 @@ export const env = {
 };
 
 export const hasRemoteProviders =
-  Boolean(env.openAiApiKey) && Boolean(env.geminiApiKey);
+  Boolean(env.openAiApiKey) || Boolean(env.geminiApiKey);
 
 export const hasSupabase =
   Boolean(env.supabaseUrl) &&

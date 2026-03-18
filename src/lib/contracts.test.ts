@@ -63,6 +63,13 @@ describe("contract guards", () => {
         location: "Unknown",
         emotion: "warm",
         color: "#6a994e",
+        rawAnalysis: "{\"title\":\"Beach Day\"}",
+        primarySubject: "beach",
+        secondarySubjects: ["sunset"],
+        objects: ["ocean", "sand"],
+        scene: "outdoor",
+        activities: ["walking"],
+        normalizedTags: ["beach", "sunset"],
       },
       librarySummary: {
         photoCount: 11,

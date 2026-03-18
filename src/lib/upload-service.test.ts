@@ -36,5 +36,7 @@ describe("upload service", () => {
 
     const stored = await readFile(uploadPath, "utf8");
     expect(stored).toBe("fake-image");
+    expect(response.photo?.primarySubject).toBeTruthy();
+    expect(response.photo?.normalizedTags?.length).toBeGreaterThan(0);
   });
 });

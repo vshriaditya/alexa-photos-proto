@@ -27,11 +27,32 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const response = await ingestUploadedPhoto(
-    file,
-    typeof batchId === "string" ? batchId : null,
-    totalCount,
-  );
+  try {
+    const response = await ingestUploadedPhoto(
+      file,
+      typeof batchId === "string" ? batchId : null,
+      totalCount,
+    );
+    const parsed = uploadResponseSchema.safeParse(response);
 
-  return NextResponse.json(uploadResponseSchema.parse(response));
+    if (!parsed.success) {
+      console.error("[uploadRoute] response validation failed", parsed.error.flatten());
+      return NextResponse.json(
+        { error: "Upload indexing completed with an invalid server payload." },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json(parsed.data);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "The demo could not process that upload.",
+      },
+      { status: 500 },
+    );
+  }
 }

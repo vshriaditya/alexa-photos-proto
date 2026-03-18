@@ -16,7 +16,14 @@ create table if not exists photos (
   location text not null,
   emotion text not null,
   color text not null,
-  searchable_text text
+  searchable_text text,
+  raw_analysis text,
+  primary_subject text,
+  secondary_subjects text[] not null default '{}',
+  objects text[] not null default '{}',
+  scene text,
+  activities text[] not null default '{}',
+  normalized_tags text[] not null default '{}'
 );
 
 create table if not exists upload_batches (

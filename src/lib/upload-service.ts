@@ -77,6 +77,12 @@ export const ingestUploadedPhoto = async (
       color: analysis.color,
       searchableText: analysis.searchableText,
       rawAnalysis: analysis.rawAnalysis ?? null,
+      primarySubject: analysis.primarySubject ?? null,
+      secondarySubjects: analysis.secondarySubjects ?? [],
+      objects: analysis.objects ?? [],
+      scene: analysis.scene ?? null,
+      activities: analysis.activities ?? [],
+      normalizedTags: analysis.normalizedTags ?? [],
     };
 
     await saveIndexedPhoto(photo);

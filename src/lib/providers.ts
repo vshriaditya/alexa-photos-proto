@@ -212,6 +212,124 @@ const stripCodeFence = (value: string) =>
     .replace(/\s*```$/i, "")
     .trim();
 
+const toStringArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((entry) => {
+        if (typeof entry === "string") {
+          return entry.split(",");
+        }
+
+        if (entry && typeof entry === "object") {
+          return Object.values(entry).flatMap((nested) =>
+            typeof nested === "string" ? nested.split(",") : [],
+          );
+        }
+
+        return [];
+      })
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
+const toSingleString = (value: unknown, fallback: string) => {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  const arrayValue = toStringArray(value);
+  if (arrayValue.length) {
+    return arrayValue[0];
+  }
+
+  return fallback;
+};
+
+const toOptionalString = (value: unknown) => {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  const arrayValue = toStringArray(value);
+  return arrayValue[0] ?? null;
+};
+
+const joinSearchableText = (values: unknown[]) =>
+  values.flatMap((value) => {
+    if (typeof value === "string") {
+      return value.trim() ? [value.trim()] : [];
+    }
+
+    return toStringArray(value);
+  });
+
+export const normalizeImageAnalysisPayload = (
+  parsed: Record<string, unknown>,
+  fallbackTitle: string,
+  fallbackFileTokens: string[],
+) => {
+  const primarySubject = toOptionalString(parsed.primarySubject);
+  const secondarySubjects = toStringArray(parsed.secondarySubjects);
+  const objects = toStringArray(parsed.objects);
+  const searchTags = toStringArray(parsed.searchTags);
+  const people = toStringArray(parsed.people);
+  const activities = toStringArray(parsed.activities);
+  const scene = toSingleString(parsed.scene, "unknown");
+  const location = toSingleString(parsed.location, "Unknown");
+  const emotion = toSingleString(parsed.emotion, "warm");
+  const color = toSingleString(parsed.color, "#6a994e");
+
+  const labels = [
+    primarySubject,
+    ...secondarySubjects,
+    ...objects,
+    ...searchTags,
+  ].filter((value): value is string => typeof value === "string" && Boolean(value));
+  const normalizedTags = expandNormalizedTags([primarySubject, ...labels]);
+  const searchableText = joinSearchableText([
+    parsed.title,
+    parsed.caption,
+    parsed.story,
+    searchTags,
+    normalizedTags,
+    scene,
+    activities,
+    people,
+    location,
+  ]).join(" ");
+
+  return {
+    title: toSingleString(parsed.title, fallbackTitle),
+    caption: toSingleString(parsed.caption, `Uploaded photo: ${fallbackTitle}.`),
+    story: toSingleString(
+      parsed.story,
+      `A newly uploaded memory featuring ${fallbackTitle}.`,
+    ),
+    labels: labels.length ? labels : buildFallbackLabels(fallbackFileTokens),
+    people,
+    location,
+    emotion,
+    color,
+    searchableText,
+    primarySubject: primarySubject || normalizedTags[0] || null,
+    secondarySubjects,
+    objects,
+    scene,
+    activities,
+    normalizedTags,
+  };
+};
+
 export const analyzeImage = async (file: File) => {
   const client = getOpenAIClient();
   const title = toTitle(file.name);
@@ -295,62 +413,12 @@ export const analyzeImage = async (file: File) => {
       hasOutputText: Boolean(raw),
       preview: raw.slice(0, 300),
     });
-    const parsed = JSON.parse(cleanedRaw) as {
-      title?: string;
-      caption?: string;
-      story?: string;
-      primarySubject?: string;
-      secondarySubjects?: string[];
-      objects?: string[];
-      scene?: string;
-      activities?: string[];
-      people?: string[];
-      location?: string;
-      emotion?: string;
-      color?: string;
-      searchTags?: string[];
-      confidenceNotes?: string;
-    };
-
-    const labels = [
-      parsed.primarySubject,
-      ...(parsed.secondarySubjects ?? []),
-      ...(parsed.objects ?? []),
-      ...(parsed.searchTags ?? []),
-    ]
-      .filter((value): value is string => typeof value === "string")
-      .map((value) => value.trim())
-      .filter(Boolean);
-    const normalizedTags = expandNormalizedTags(labels);
-    const searchableText = [
-      parsed.title,
-      parsed.caption,
-      parsed.story,
-      ...(parsed.searchTags ?? []),
-      ...normalizedTags,
-      parsed.scene,
-      ...(parsed.activities ?? []),
-    ]
-      .filter(Boolean)
-      .join(" ");
+    const parsed = JSON.parse(cleanedRaw) as Record<string, unknown>;
+    const normalized = normalizeImageAnalysisPayload(parsed, title, fileTokens);
 
     return {
-      title: parsed.title || title,
-      caption: parsed.caption || `Uploaded photo: ${title}.`,
-      story: parsed.story || `A newly uploaded memory featuring ${title}.`,
-      labels: labels.length ? labels : buildFallbackLabels(fileTokens),
-      people: parsed.people ?? [],
-      location: parsed.location || "Unknown",
-      emotion: parsed.emotion || "warm",
-      color: parsed.color || "#6a994e",
-      searchableText,
+      ...normalized,
       rawAnalysis: cleanedRaw,
-      primarySubject: parsed.primarySubject || normalizedTags[0] || null,
-      secondarySubjects: parsed.secondarySubjects ?? [],
-      objects: parsed.objects ?? [],
-      scene: parsed.scene || "unknown",
-      activities: parsed.activities ?? [],
-      normalizedTags,
     };
   } catch (error) {
     const labels = buildFallbackLabels(fileTokens);
