@@ -1,7 +1,7 @@
 import { demoLibrarySummary } from "@/lib/demo-library";
 import { getIntent } from "@/lib/providers";
 import { getLibrarySummary, getPhotoLibrary, storeEvent } from "@/lib/repository";
-import { countStrongMatches, rankPhotos } from "@/lib/search";
+import { countStrongMatches, filterStrongMatches, rankPhotos } from "@/lib/search";
 import type { EventPayload, QueryRequest, QueryResponse } from "@/lib/types";
 
 const buildResultDrivenAnswer = (
@@ -70,8 +70,10 @@ export const executeQuery = async ({
     };
   }
 
-  const results = rankPhotos(photos, intent);
-  const strongMatchCount = countStrongMatches(results, intent.queryText);
+  const rankedResults = rankPhotos(photos, intent);
+  const strongMatches = filterStrongMatches(rankedResults, intent.queryText);
+  const results = strongMatches.length > 0 ? strongMatches : rankedResults;
+  const strongMatchCount = countStrongMatches(rankedResults, intent.queryText);
   const looksLikeRefinement = conversation.some((turn) => turn.role === "assistant");
 
   await storeEvent({

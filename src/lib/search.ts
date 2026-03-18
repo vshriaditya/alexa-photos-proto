@@ -270,6 +270,23 @@ export const countStrongMatches = (photos: PhotoResult[], queryText: string) => 
   }).length;
 };
 
+export const filterStrongMatches = (photos: PhotoResult[], queryText: string) => {
+  const queryTokens = getMeaningfulTokens(queryText);
+
+  return photos.filter((photo) => {
+    const exactPool = [
+      ...photo.labels,
+      ...(photo.normalizedTags ?? []),
+      ...(photo.primarySubject ? [photo.primarySubject] : []),
+      ...(photo.people ?? []),
+    ].map((value) => value.toLowerCase());
+
+    return queryTokens.some((token) =>
+      exactPool.some((candidate) => candidate.includes(token)),
+    );
+  });
+};
+
 export const runQuery = (
   photos: PhotoRecord[],
   query: string,
@@ -289,7 +306,9 @@ export const runQuery = (
     };
   }
 
-  const results = rankPhotos(photos, intent);
+  const rankedResults = rankPhotos(photos, intent);
+  const strongMatches = filterStrongMatches(rankedResults, intent.queryText);
+  const results = strongMatches.length > 0 ? strongMatches : rankedResults;
 
   return {
     naturalAnswer:

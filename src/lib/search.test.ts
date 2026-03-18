@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import { demoLibrary, goldenQueries } from "@/lib/demo-library";
-import { countStrongMatches, parseIntent, rankPhotos, runQuery } from "@/lib/search";
+import {
+  countStrongMatches,
+  filterStrongMatches,
+  parseIntent,
+  rankPhotos,
+  runQuery,
+} from "@/lib/search";
 
 describe("search contracts", () => {
   it("extracts structured filters from a direct recall query", () => {
@@ -50,11 +56,29 @@ describe("search contracts", () => {
         color: "#ffffff",
         normalizedTags: ["baby", "infant", "bed"],
       },
+      {
+        id: "photo-2",
+        title: "Mountain Range",
+        imageUrl: "/mountain.jpg",
+        caption: "A mountain landscape.",
+        story: "Autumn mountains.",
+        labels: ["mountain", "trees"],
+        people: [],
+        year: 2026,
+        month: 3,
+        location: "Unknown",
+        emotion: "calm",
+        color: "#88aaff",
+        normalizedTags: ["mountain", "forest"],
+      },
     ];
 
     const intent = parseIntent("Show me baby photos", [], photos);
     const results = rankPhotos(photos, intent);
+    const strongMatches = filterStrongMatches(results, "Show me baby photos");
 
     expect(countStrongMatches(results, "Show me baby photos")).toBe(1);
+    expect(strongMatches).toHaveLength(1);
+    expect(strongMatches[0]?.id).toBe("photo-1");
   });
 });
