@@ -318,7 +318,7 @@ export const analyzeImage = async (file: File) => {
       ...(parsed.objects ?? []),
       ...(parsed.searchTags ?? []),
     ]
-      .filter((value): value is string => Boolean(value))
+      .filter((value): value is string => typeof value === "string")
       .map((value) => value.trim())
       .filter(Boolean);
     const normalizedTags = expandNormalizedTags(labels);
