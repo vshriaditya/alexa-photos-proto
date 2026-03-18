@@ -19,9 +19,17 @@ const normalizeToken = (value: string) =>
     .trim()
     .replace(/[_-]/g, " ");
 
-export const expandNormalizedTags = (values: string[]) => {
-  const base = values
-    .flatMap((value) => value.split(","))
+const toStringTokens = (values: unknown[]) =>
+  values.flatMap((value) => {
+    if (typeof value !== "string") {
+      return [];
+    }
+
+    return value.split(",");
+  });
+
+export const expandNormalizedTags = (values: unknown[]) => {
+  const base = toStringTokens(values)
     .map(normalizeToken)
     .filter(Boolean);
 
