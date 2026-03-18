@@ -1,7 +1,15 @@
 "use client";
 
 import Image from "next/image";
-import { ChangeEvent, FormEvent, useEffect, useRef, useState, useTransition } from "react";
+import {
+  ChangeEvent,
+  FormEvent,
+  KeyboardEvent,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 
 import { createSessionId } from "@/lib/session";
 import type {
@@ -108,7 +116,7 @@ export function ReviewDemo({
 
   useEffect(() => {
     const container = messagesRef.current;
-    if (!container) {
+    if (!container || typeof container.scrollTo !== "function") {
       return;
     }
 
@@ -186,6 +194,22 @@ export function ReviewDemo({
     const queryText = query.trim();
     setQuery("");
     await sendQuery(queryText);
+  };
+
+  const handleComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== "Enter" || event.shiftKey) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (!query.trim() || isPending || isUploading) {
+      return;
+    }
+
+    const queryText = query.trim();
+    setQuery("");
+    void sendQuery(queryText);
   };
 
   const toggleListening = () => {
@@ -587,6 +611,7 @@ export function ReviewDemo({
               rows={3}
               placeholder="Ask anything about the seeded library..."
               onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={handleComposerKeyDown}
             />
             <div className="composerActions">
               <button

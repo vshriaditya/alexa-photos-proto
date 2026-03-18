@@ -54,8 +54,22 @@ const tokenize = (text: string) =>
     .split(/\s+/)
     .filter(Boolean);
 
+const normalizeQueryToken = (token: string) => {
+  if (token.endsWith("ies") && token.length > 4) {
+    return `${token.slice(0, -3)}y`;
+  }
+
+  if (token.endsWith("s") && !token.endsWith("ss") && token.length > 3) {
+    return token.slice(0, -1);
+  }
+
+  return token;
+};
+
 const getMeaningfulTokens = (text: string) =>
-  tokenize(text).filter((token) => !stopWords.has(token));
+  [...new Set(tokenize(text)
+    .filter((token) => !stopWords.has(token))
+    .map((token) => normalizeQueryToken(token)))];
 
 const buildExactPool = (photo: PhotoRecord) =>
   [
@@ -94,7 +108,7 @@ export const parseIntent = (
   selectedOption?: string | null,
 ): ParsedIntent => {
   const mergedQuery = [query, selectedOption].filter(Boolean).join(" ");
-  const queryTokens = tokenize(mergedQuery);
+  const queryTokens = getMeaningfulTokens(mergedQuery);
   const labels = unique(findInCollection(queryTokens, photoLibrary.flatMap((photo) => photo.labels)));
   const people = unique(findInCollection(queryTokens, photoLibrary.flatMap((photo) => photo.people)));
   const locations = unique(photoLibrary.map((photo) => photo.location)).filter((location) =>

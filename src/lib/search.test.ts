@@ -132,4 +132,46 @@ describe("search contracts", () => {
     expect(strongMatches).toHaveLength(1);
     expect(strongMatches[0]?.id).toBe("yosemite-cabin-2024");
   });
+
+  it("matches plural dog queries to singular dog tags", () => {
+    const photos = [
+      {
+        id: "photo-1",
+        title: "Dog on Ferry Deck",
+        imageUrl: "/dog.jpg",
+        caption: "A dog resting on a ferry deck.",
+        story: "A dog resting near the railing.",
+        labels: ["dog", "people"],
+        people: [],
+        year: 2026,
+        month: 3,
+        location: "Unknown",
+        emotion: "calm",
+        color: "#cccccc",
+        normalizedTags: ["dog", "canine"],
+      },
+      {
+        id: "photo-2",
+        title: "Yosemite Valley",
+        imageUrl: "/yosemite.jpg",
+        caption: "A mountain valley view.",
+        story: "Granite cliffs and misty forest.",
+        labels: ["mountains", "forest"],
+        people: [],
+        year: 2026,
+        month: 3,
+        location: "Yosemite National Park",
+        emotion: "calm",
+        color: "#88aaff",
+        normalizedTags: ["mountain", "forest"],
+      },
+    ];
+
+    const intent = parseIntent("Show me dogs", [], photos);
+    const results = rankPhotos(photos, intent);
+    const strongMatches = filterStrongMatches(results, "Show me dogs");
+
+    expect(strongMatches).toHaveLength(1);
+    expect(strongMatches[0]?.id).toBe("photo-1");
+  });
 });
