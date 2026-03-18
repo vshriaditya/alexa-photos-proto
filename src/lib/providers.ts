@@ -204,6 +204,14 @@ const normalizeIntentPayload = (
   };
 };
 
+const stripCodeFence = (value: string) =>
+  value
+    .trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+
 export const analyzeImage = async (file: File) => {
   const client = getOpenAIClient();
   const title = toTitle(file.name);
@@ -281,12 +289,13 @@ export const analyzeImage = async (file: File) => {
     });
 
     const raw = response.output_text ?? "";
+    const cleanedRaw = stripCodeFence(raw);
     console.info("[analyzeImage] openai-response", {
       fileName: file.name,
       hasOutputText: Boolean(raw),
       preview: raw.slice(0, 300),
     });
-    const parsed = JSON.parse(raw) as {
+    const parsed = JSON.parse(cleanedRaw) as {
       title?: string;
       caption?: string;
       story?: string;
@@ -335,7 +344,7 @@ export const analyzeImage = async (file: File) => {
       emotion: parsed.emotion || "warm",
       color: parsed.color || "#6a994e",
       searchableText,
-      rawAnalysis: raw,
+      rawAnalysis: cleanedRaw,
       primarySubject: parsed.primarySubject || normalizedTags[0] || null,
       secondarySubjects: parsed.secondarySubjects ?? [],
       objects: parsed.objects ?? [],
