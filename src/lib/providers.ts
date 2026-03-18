@@ -40,9 +40,10 @@ export const getIntent = async (
   selectedOption?: string | null,
 ): Promise<ParsedIntent> => {
   const client = getOpenAIClient();
+  const heuristicIntent = parseIntent(query, conversation, photos, selectedOption);
 
   if (!client) {
-    return parseIntent(query, conversation, photos, selectedOption);
+    return heuristicIntent;
   }
 
   try {
@@ -78,12 +79,15 @@ export const getIntent = async (
 
     try {
       const parsed = JSON.parse(raw) as Record<string, unknown>;
-      return normalizeIntentPayload(parsed, query);
+      return mergeIntentPayloads(
+        heuristicIntent,
+        normalizeIntentPayload(parsed, query),
+      );
     } catch {
-      return parseIntent(query, conversation, photos, selectedOption);
+      return heuristicIntent;
     }
   } catch {
-    return parseIntent(query, conversation, photos, selectedOption);
+    return heuristicIntent;
   }
 };
 
@@ -203,6 +207,35 @@ const normalizeIntentPayload = (
       query,
   };
 };
+
+const mergeStringLists = (left: string[] | undefined, right: string[] | undefined) =>
+  [...new Set([...(left ?? []), ...(right ?? [])])];
+
+const mergeIntentPayloads = (
+  heuristicIntent: ParsedIntent,
+  remoteIntent: ParsedIntent,
+): ParsedIntent => ({
+  ...remoteIntent,
+  naturalAnswer: remoteIntent.naturalAnswer || heuristicIntent.naturalAnswer,
+  filters: {
+    labels: mergeStringLists(heuristicIntent.filters.labels, remoteIntent.filters.labels),
+    people: mergeStringLists(heuristicIntent.filters.people, remoteIntent.filters.people),
+    year: remoteIntent.filters.year ?? heuristicIntent.filters.year ?? null,
+    month: remoteIntent.filters.month ?? heuristicIntent.filters.month ?? null,
+    location: remoteIntent.filters.location ?? heuristicIntent.filters.location ?? null,
+  },
+  searchMode:
+    remoteIntent.searchMode === "semantic" &&
+    (
+      (heuristicIntent.filters.labels?.length ?? 0) > 0 ||
+      (heuristicIntent.filters.people?.length ?? 0) > 0 ||
+      heuristicIntent.filters.location ||
+      heuristicIntent.filters.year ||
+      heuristicIntent.filters.month
+    )
+      ? "hybrid"
+      : remoteIntent.searchMode,
+});
 
 const stripCodeFence = (value: string) =>
   value

@@ -73,6 +73,7 @@ export function ReviewDemo({
   librarySummary,
   uploadsEnabled,
 }: ReviewDemoProps) {
+  const messagesRef = useRef<HTMLDivElement | null>(null);
   const [libraryState, setLibraryState] = useState(librarySummary);
   const [conversation, setConversation] = useState<ConversationTurn[]>(starters);
   const [results, setResults] = useState<PhotoResult[]>(initialResults);
@@ -104,6 +105,18 @@ export function ReviewDemo({
       metadata: { surface: "public-review" },
     });
   }, [sessionId]);
+
+  useEffect(() => {
+    const container = messagesRef.current;
+    if (!container) {
+      return;
+    }
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [conversation, chips]);
 
   const sendQuery = async (queryText: string, selectedOption?: string | null) => {
     setStatusText("Searching...");
@@ -534,7 +547,7 @@ export function ReviewDemo({
             <h2>Chat</h2>
             <span>{isPending ? "Working..." : "Review ready"}</span>
           </div>
-          <div className="messages" aria-live="polite">
+          <div className="messages" aria-live="polite" ref={messagesRef}>
             {conversation.map((turn, index) => (
               <article
                 key={`${turn.role}-${index}`}

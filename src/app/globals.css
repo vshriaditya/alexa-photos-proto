@@ -151,6 +151,12 @@ a {
   flex-direction: column;
 }
 
+.chatPanel {
+  height: min(78vh, 960px);
+  min-height: 78vh;
+  overflow: hidden;
+}
+
 .chipWrap {
   display: flex;
   flex-wrap: wrap;
@@ -299,6 +305,7 @@ a {
   border-top: 1px solid var(--line);
   padding-top: 18px;
   margin-top: 16px;
+  background: linear-gradient(180deg, rgba(244, 239, 230, 0), rgba(244, 239, 230, 0.92) 18%);
 }
 
 .composer textarea {
@@ -463,6 +470,12 @@ a {
 
   .panel {
     min-height: auto;
+  }
+
+  .chatPanel {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
   }
 
   .hero {

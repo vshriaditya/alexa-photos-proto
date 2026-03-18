@@ -81,4 +81,55 @@ describe("search contracts", () => {
     expect(strongMatches).toHaveLength(1);
     expect(strongMatches[0]?.id).toBe("photo-1");
   });
+
+  it("requires all requested concepts for a strong multi-tag match", () => {
+    const photos = [
+      {
+        id: "photo-1",
+        title: "Baby and Dog",
+        imageUrl: "/baby-dog.jpg",
+        caption: "A baby with a dog.",
+        story: "A baby and dog together.",
+        labels: ["baby", "dog"],
+        people: [],
+        year: 2026,
+        month: 3,
+        location: "Unknown",
+        emotion: "happy",
+        color: "#ffffff",
+        normalizedTags: ["baby", "dog"],
+      },
+      {
+        id: "photo-2",
+        title: "Baby Only",
+        imageUrl: "/baby.jpg",
+        caption: "A sleeping baby.",
+        story: "Baby naptime.",
+        labels: ["baby"],
+        people: [],
+        year: 2026,
+        month: 3,
+        location: "Unknown",
+        emotion: "calm",
+        color: "#eeeeee",
+        normalizedTags: ["baby", "infant"],
+      },
+    ];
+
+    const intent = parseIntent("Show me dog and baby photo together", [], photos);
+    const results = rankPhotos(photos, intent);
+    const strongMatches = filterStrongMatches(results, "Show me dog and baby photo together");
+
+    expect(strongMatches).toHaveLength(1);
+    expect(strongMatches[0]?.id).toBe("photo-1");
+  });
+
+  it("treats exact location matches like Yosemite as strong results", () => {
+    const intent = parseIntent("Show me yosemite", [], demoLibrary);
+    const results = rankPhotos(demoLibrary, intent);
+    const strongMatches = filterStrongMatches(results, "Show me yosemite");
+
+    expect(strongMatches).toHaveLength(1);
+    expect(strongMatches[0]?.id).toBe("yosemite-cabin-2024");
+  });
 });

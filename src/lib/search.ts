@@ -26,6 +26,10 @@ const unique = (items: string[]) => [...new Set(items)];
 const stopWords = new Set([
   "show",
   "me",
+  "and",
+  "together",
+  "near",
+  "please",
   "photos",
   "photo",
   "pictures",
@@ -52,6 +56,15 @@ const tokenize = (text: string) =>
 
 const getMeaningfulTokens = (text: string) =>
   tokenize(text).filter((token) => !stopWords.has(token));
+
+const buildExactPool = (photo: PhotoRecord) =>
+  [
+    ...photo.labels,
+    ...(photo.normalizedTags ?? []),
+    ...(photo.primarySubject ? [photo.primarySubject] : []),
+    ...(photo.people ?? []),
+    ...(photo.location ? [photo.location] : []),
+  ].map((value) => value.toLowerCase());
 
 const inferYear = (query: string) => {
   const match = query.match(/\b(20\d{2})\b/);
@@ -211,7 +224,7 @@ export const applyFilters = (photos: PhotoRecord[], filters: QueryFilters) =>
   photos.filter((photo) => {
     const labelsMatch =
       !filters.labels?.length ||
-      filters.labels.some((label) =>
+      filters.labels.every((label) =>
         [
           ...photo.labels,
           ...(photo.normalizedTags ?? []),
@@ -223,7 +236,7 @@ export const applyFilters = (photos: PhotoRecord[], filters: QueryFilters) =>
 
     const peopleMatch =
       !filters.people?.length ||
-      filters.people.some((person) =>
+      filters.people.every((person) =>
         photo.people.some((photoPerson) =>
           photoPerson.toLowerCase().includes(person.toLowerCase()),
         ),
@@ -257,14 +270,9 @@ export const countStrongMatches = (photos: PhotoResult[], queryText: string) => 
   const queryTokens = getMeaningfulTokens(queryText);
 
   return photos.filter((photo) => {
-    const exactPool = [
-      ...photo.labels,
-      ...(photo.normalizedTags ?? []),
-      ...(photo.primarySubject ? [photo.primarySubject] : []),
-      ...(photo.people ?? []),
-    ].map((value) => value.toLowerCase());
+    const exactPool = buildExactPool(photo);
 
-    return queryTokens.some((token) =>
+    return queryTokens.length > 0 && queryTokens.every((token) =>
       exactPool.some((candidate) => candidate.includes(token)),
     );
   }).length;
@@ -274,14 +282,9 @@ export const filterStrongMatches = (photos: PhotoResult[], queryText: string) =>
   const queryTokens = getMeaningfulTokens(queryText);
 
   return photos.filter((photo) => {
-    const exactPool = [
-      ...photo.labels,
-      ...(photo.normalizedTags ?? []),
-      ...(photo.primarySubject ? [photo.primarySubject] : []),
-      ...(photo.people ?? []),
-    ].map((value) => value.toLowerCase());
+    const exactPool = buildExactPool(photo);
 
-    return queryTokens.some((token) =>
+    return queryTokens.length > 0 && queryTokens.every((token) =>
       exactPool.some((candidate) => candidate.includes(token)),
     );
   });
